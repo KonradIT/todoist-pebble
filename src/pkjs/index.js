@@ -1,5 +1,7 @@
-var clientID = '2a11ee6e18fe46ad89f9dcbd5507b76b';
-var secret = 'cc88177b38774df2acfedd668be53824';
+const clientID = '2a11ee6e18fe46ad89f9dcbd5507b76b';
+const secret = 'cc88177b38774df2acfedd668be53824';
+const apiUrl = 'https://api.todoist.com/sync/v9/sync';
+
 var code;
 var selectedProjectID;
 
@@ -180,9 +182,7 @@ function getItems(responseText)
                 {
                     continue;
                 }
-            }
-            //xhrRequest('https://hookb.in/Ew985m0g?stuff=' + JSON.stringify(json[i]), 'POST', deadFunction);
-            
+            }            
             
             //items added via outlook have an ID tag in their content and some really weird syntax. The below is to fix this and show it as a normal item
             json[i].content = removeOutlookGarbage(json[i].content);
@@ -552,27 +552,24 @@ function processTodoistDataWithGoogle()
 function getProjectsFromToken()
 {
     const token = localStorage.getItem("todoistMiniTokenV7");
-    const url = "https://api.todoist.com/sync/v9/sync";
     const params = "sync_token=*&resource_types=[\"projects\"]";
-    xhrRequest(url + "?" + params, 'GET', getProjects, token);
+    xhrRequest(apiUrl + "?" + params, 'GET', getProjects, token);
 }
 
 function getItemsForSelectedProject(projectID)
 {
     selectedProjectID = projectID;
     const token = localStorage.getItem("todoistMiniTokenV7");
-    const url = "https://api.todoist.com/sync/v9/sync";
     const params = "sync_token=*&resource_types=[\"items\"]";
-    xhrRequest(url + "?" + params, 'GET', getItems, token);
+    xhrRequest(apiUrl + "?" + params, 'GET', getItems, token);
 }
 
 function getItemsForToday()
 {
     selectedProjectID = 0; // seems to indicate today's project??
     const token = localStorage.getItem("todoistMiniTokenV7");
-    const url = "https://api.todoist.com/sync/v9/sync";
     const params = "sync_token=*&resource_types=[\"items\"]";
-    xhrRequest(url + "?" + params, 'GET', getItems, token);
+    xhrRequest(apiUrl + "?" + params, 'GET', getItems, token);
 }
 
 function addNewItem(itemText, projectID)
@@ -587,9 +584,8 @@ function addNewItem(itemText, projectID)
         }
     }];
     const token = localStorage.getItem("todoistMiniTokenV7");
-    const url = "https://api.todoist.com/sync/v9/sync";
     const params = "commands=" + encodeURIComponent(JSON.stringify(commandsjson));
-    xhrRequest(url + "?" + params, 'GET', addItem, token);
+    xhrRequest(apiUrl + "?" + params, 'GET', addItem, token);
 }
 
 function markItemAsCompleted(itemID)
@@ -605,9 +601,8 @@ function markItemAsCompleted(itemID)
     }];
     
     const token = localStorage.getItem("todoistMiniTokenV7");
-    const url = "https://api.todoist.com/sync/v9/sync";
     const params = "commands=" + encodeURIComponent(JSON.stringify(commandsjson));
-    xhrRequest(url + "?" + params, 'GET', markItem, token);
+    xhrRequest(apiUrl + "?" + params, 'GET', markItem, token);
 }
 
 function markRecurringItemAsCompleted(itemID)
@@ -624,9 +619,8 @@ function markRecurringItemAsCompleted(itemID)
     }];
     
     const token = localStorage.getItem("todoistMiniTokenV7");
-    const url = "https://api.todoist.com/sync/v9/sync";
     const params = "commands=" + encodeURIComponent(JSON.stringify(commandsjson));
-    xhrRequest(url + "?" + params, 'GET', markRecurringItem);
+    xhrRequest(apiUrl + "?" + params, 'GET', markRecurringItem, token);
 }
 
 function markItemAsUncompleted(itemID)
@@ -643,9 +637,8 @@ function markItemAsUncompleted(itemID)
     }];
     
     const token = localStorage.getItem("todoistMiniTokenV7");
-    const url = "https://api.todoist.com/sync/v9/sync";
     const params = "commands=" + encodeURIComponent(JSON.stringify(commandsjson));
-    xhrRequest(url + "?" + params, 'GET', uncompleteItem, token);
+    xhrRequest(apiUrl + "?" + params, 'GET', uncompleteItem, token);
 }
 
 

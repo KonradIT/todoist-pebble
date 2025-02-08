@@ -9,7 +9,7 @@
             "configurable"
         ],
         "displayName": "Todoist Mini",
-        "enableMultiJS": false,
+        "enableMultiJS": true,
         "messageKeys": {
             "ADD_NEW_ITEM": 16,
             "CONFIG": 8,
@@ -30,14 +30,12 @@
             "TIMELINE_COMPLETE": 9,
             "WAITING": 6
         },
-        "projectType": "native",
         "resources": {
             "media": [
                 {
                     "file": "images/TodoistMiniLogo.png",
                     "menuIcon": true,
                     "name": "TODOIST_MINI_LOGO",
-                    "targetPlatforms": null,
                     "type": "bitmap"
                 }
             ]
@@ -47,13 +45,12 @@
             "aplite",
             "basalt",
             "chalk",
-            "diorite",
-            "emery"
+            "diorite"
         ],
         "uuid": "156ab4ed-c65c-4dca-ab42-af435f784aa1",
         "watchapp": {
             "watchface": false
         }
     },
-    "version": "1.25.0"
+    "version": "1.33.0"
 }

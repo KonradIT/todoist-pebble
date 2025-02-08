@@ -109,6 +109,22 @@ function parseTodoistDateString(dueObject) {
     return dueObject.string;
 }
 
+function getIndentLevel(item, allItems) {
+    let level = 1; // Start at level 1
+    let currentItem = item;
+    
+    // Traverse up the parent hierarchy until we reach a top-level item
+    while (currentItem.parent_id) {
+        level++;
+        // Find the parent item
+        currentItem = allItems.find(i => i.id === currentItem.parent_id);
+        // Break if parent not found to prevent infinite loops
+        if (!currentItem) break;
+    }
+    
+    return level;
+}
+
 function getItems(responseText)
 {    
     try {
@@ -129,7 +145,22 @@ function getItems(responseText)
         }
         else
         {
-            json.sort((a, b) => parseInt(b.child_order) - parseInt(a.child_order));
+            // Sort items considering parent-child relationships
+            json.sort((a, b) => {
+                // Get parent items
+                const aParent = json.find(item => item.id === a.parent_id);
+                const bParent = json.find(item => item.id === b.parent_id);
+                
+                // If items have different parents, sort by parent's child_order
+                if (aParent !== bParent) {
+                    const aParentOrder = aParent ? parseInt(aParent.child_order) : parseInt(a.child_order);
+                    const bParentOrder = bParent ? parseInt(bParent.child_order) : parseInt(b.child_order);
+                    return bParentOrder - aParentOrder;
+                }
+                
+                // If items have same parent (or both are top-level), sort by their child_order
+                return parseInt(b.child_order) - parseInt(a.child_order);
+            });
         }
             
         if (json[0] && !json[0].hasOwnProperty("id"))
@@ -200,7 +231,7 @@ function getItems(responseText)
                 itemDates = itemDates + "|";
             else
                 itemDates = itemDates + parseTodoistDateString(json[i].due) + "|";
-            itemIndentation = itemIndentation + json[i].indent + "|";
+                itemIndentation = itemIndentation + getIndentLevel(json[i], json) + "|";
             if (json[i].due === null)
             {
                 itemDueDates = itemDueDates + "|"; 
@@ -296,7 +327,7 @@ function getProjects(responseText)
         {
             projectNames = projectNames + json[i].name.replace("|", "")  + " |";
             projectIDs = projectIDs  + json[i].id + "|";
-            projectIndentation = projectIndentation + json[i].indent + "|";
+            projectIndentation = projectIndentation + getIndentLevel(json[i], json) + "|";
         }
     
         var dictionary = 

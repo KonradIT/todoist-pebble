@@ -102,6 +102,13 @@ function parseTodoistDate(dueObject) {
     return new Date(timestamp); 
 }
 
+function parseTodoistDateString(dueObject) {
+    if (dueObject === null) {
+        return "";
+    }
+    return dueObject.string;
+}
+
 function getItems(responseText)
 {    
     try {
@@ -122,7 +129,7 @@ function getItems(responseText)
         }
         else
         {
-            json.sort((a, b) => parseInt(a.item_order) - parseInt(b.item_order));
+            json.sort((a, b) => parseInt(b.child_order) - parseInt(a.child_order));
         }
             
         if (json[0] && !json[0].hasOwnProperty("id"))
@@ -189,10 +196,10 @@ function getItems(responseText)
             
             itemNames = itemNames + json[i].content.replace("|", "") + " |";
             itemIDs = itemIDs  + json[i].id + "|";
-            if (json[i].date_string == "null")
+            if (parseTodoistDateString(json[i].due) == "")
                 itemDates = itemDates + "|";
             else
-                itemDates = itemDates + json[i].date_string + "|";
+                itemDates = itemDates + parseTodoistDateString(json[i].due) + "|";
             itemIndentation = itemIndentation + json[i].indent + "|";
             if (json[i].due === null)
             {

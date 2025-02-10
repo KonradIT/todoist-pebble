@@ -1,6 +1,13 @@
 const clientID = '2a11ee6e18fe46ad89f9dcbd5507b76b';
 const secret = 'cc88177b38774df2acfedd668be53824';
 const apiUrl = 'https://api.todoist.com/sync/v9/sync';
+const modernWatches = [
+    "basalt", // Time/Time Steel
+    "chalk", // Round
+    "diorite"]; // Pebble 2
+
+// For Aplite (Pebble / Pebble Steel) its needed:
+const maxForLowMemDevices = 20;
 
 var code;
 var selectedProjectID;
@@ -9,6 +16,10 @@ var markCompletedUUID;
 var markCompletedItemID;
 
 function createUUID() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    
     // http://www.ietf.org/rfc/rfc4122.txt
     var s = [];
     var hexDigits = "0123456789abcdef";
@@ -132,6 +143,11 @@ function getItems(responseText)
         let json = JSON.parse(responseText);
         json = json.items;
     
+        // My time steel crashes when there are a lot of tasks...
+        if (!modernWatches.includes(getWatchVersion()) && json.length > maxForLowMemDevices) {
+            json = json.slice(maxForLowMemDevices);
+        }
+
         const isToday = selectedProjectID === 0 ? 1 : 0;
     
         //sort the list based on the item order property, if today, sort by date
@@ -182,7 +198,6 @@ function getItems(responseText)
         
     
         const watchVersion = getWatchVersion();
-        const modernWatches = ["basalt", "chalk", "diorite", "emery"];
     
         //only put "Add New" if we are on modern watches
         if (modernWatches.includes(watchVersion) && !isToday)
@@ -759,18 +774,25 @@ function setConfig(loginData)
     }
 }
 
-function openConfig(e) 
-{
-    if (localStorage.getItem("ConfigData") === null)
-    {
-        Pebble.openURL('https://perogy.github.io/PebbleProject/indexNew.html');
-    }
-    else
-    {
-        var configData = JSON.parse(localStorage.getItem("ConfigData"));
-        Pebble.openURL('https://perogy.github.io/PebbleProject/indexNew.html#' + 'scrollSpeed=' + configData.scrollSpeed + '&backgroundColor=' + configData.backgroundColor + '&foregroundColor=' + configData.foregroundColor + '&altBackgroundColor=' + 
-                                                            configData.altBackgroundColor + '&altForegroundColor=' + configData.altForegroundColor + '&highlightBackgroundColor=' + configData.highlightBackgroundColor + '&highlightForegroundColor=' + configData.highlightForegroundColor + '&timelineEnabled=' + configData.timelineEnabled);
+function openConfig(e) {
+    const baseUrl = "https://perogy.github.io/PebbleProject/indexNew.html";
+    
+    if (localStorage.getItem("ConfigData") === null) {
+        Pebble.openURL(baseUrl);
+    } else {
+        const configData = JSON.parse(localStorage.getItem("ConfigData"));
+        const params = new URLSearchParams({
+            scrollSpeed: configData.scrollSpeed,
+            backgroundColor: configData.backgroundColor,
+            foregroundColor: configData.foregroundColor,
+            altBackgroundColor: configData.altBackgroundColor,
+            altForegroundColor: configData.altForegroundColor,
+            highlightBackgroundColor: configData.highlightBackgroundColor,
+            highlightForegroundColor: configData.highlightForegroundColor,
+            timelineEnabled: configData.timelineEnabled
+        });
         
+        Pebble.openURL(`${baseUrl}#${params.toString()}`);
     }
 }
 

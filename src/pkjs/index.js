@@ -627,6 +627,10 @@ function getItemsForToday()
 
 function addNewItem(itemText, projectID)
 {
+    // Pebble dictation always ends phrases with a dot, we don't want to send the dot to todoist.
+    if (itemText.endsWith(".")) {
+        itemText = itemText.slice(0, -1);
+    }
     const commandsjson = [{
         "type": "item_add",
         "temp_id": createUUID(),

@@ -1,6 +1,6 @@
 const clientID = '2a11ee6e18fe46ad89f9dcbd5507b76b';
 const secret = 'cc88177b38774df2acfedd668be53824';
-const apiUrl = 'https://api.todoist.com/sync/v9/sync';
+const apiUrl = 'https://api.todoist.com/api/v1/sync';
 const modernWatches = [
     "basalt", // Time/Time Steel
     "chalk", // Round
@@ -606,7 +606,7 @@ function getProjectsFromToken()
 {
     const token = localStorage.getItem("todoistMiniTokenV7");
     const params = "sync_token=*&resource_types=[\"projects\"]";
-    xhrRequest(apiUrl + "?" + params, 'GET', getProjects, token);
+    xhrRequest(apiUrl + "?" + params, 'POST', getProjects, token);
 }
 
 function getItemsForSelectedProject(projectID)
@@ -614,7 +614,7 @@ function getItemsForSelectedProject(projectID)
     selectedProjectID = projectID;
     const token = localStorage.getItem("todoistMiniTokenV7");
     const params = "sync_token=*&resource_types=[\"items\"]";
-    xhrRequest(apiUrl + "?" + params, 'GET', getItems, token);
+    xhrRequest(apiUrl + "?" + params, 'POST', getItems, token);
 }
 
 function getItemsForToday()
@@ -622,7 +622,7 @@ function getItemsForToday()
     selectedProjectID = 0; // seems to indicate today's project??
     const token = localStorage.getItem("todoistMiniTokenV7");
     const params = "sync_token=*&resource_types=[\"items\"]";
-    xhrRequest(apiUrl + "?" + params, 'GET', getItems, token);
+    xhrRequest(apiUrl + "?" + params, 'POST', getItems, token);
 }
 
 function addNewItem(itemText, projectID)
@@ -642,7 +642,7 @@ function addNewItem(itemText, projectID)
     }];
     const token = localStorage.getItem("todoistMiniTokenV7");
     const params = "commands=" + encodeURIComponent(JSON.stringify(commandsjson));
-    xhrRequest(apiUrl + "?" + params, 'GET', addItem, token);
+    xhrRequest(apiUrl + "?" + params, 'POST', addItem, token);
 }
 
 function markItemAsCompleted(itemID)
@@ -659,7 +659,7 @@ function markItemAsCompleted(itemID)
     
     const token = localStorage.getItem("todoistMiniTokenV7");
     const params = "commands=" + encodeURIComponent(JSON.stringify(commandsjson));
-    xhrRequest(apiUrl + "?" + params, 'GET', markItem, token);
+    xhrRequest(apiUrl + "?" + params, 'POST', markItem, token);
 }
 
 function markRecurringItemAsCompleted(itemID)
@@ -677,7 +677,7 @@ function markRecurringItemAsCompleted(itemID)
     
     const token = localStorage.getItem("todoistMiniTokenV7");
     const params = "commands=" + encodeURIComponent(JSON.stringify(commandsjson));
-    xhrRequest(apiUrl + "?" + params, 'GET', markRecurringItem, token);
+    xhrRequest(apiUrl + "?" + params, 'POST', markRecurringItem, token);
 }
 
 function markItemAsUncompleted(itemID)
@@ -695,9 +695,37 @@ function markItemAsUncompleted(itemID)
     
     const token = localStorage.getItem("todoistMiniTokenV7");
     const params = "commands=" + encodeURIComponent(JSON.stringify(commandsjson));
-    xhrRequest(apiUrl + "?" + params, 'GET', uncompleteItem, token);
+    xhrRequest(apiUrl + "?" + params, 'POST', uncompleteItem, token);
 }
 
+
+// Token migration function for existing users
+function migrateToken(oldToken, callback) {
+    const xhr = new XMLHttpRequest();
+    xhr.onload = function () {
+        if (this.status === 200) {
+            try {
+                const json = JSON.parse(this.responseText);
+                if (json.token) {
+                    localStorage.setItem("todoistMiniTokenV7", json.token);
+                    callback(true);
+                } else {
+                    callback(false);
+                }
+            } catch (e) {
+                callback(false);
+            }
+        } else {
+            callback(false);
+        }
+    };
+    xhr.onerror = function() {
+        callback(false);
+    };
+    xhr.open('POST', 'https://api.todoist.com/api/v1/access_tokens/migrate_personal_token');
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.send(JSON.stringify({"token": oldToken}));
+}
 
 // Listen for when the watchface is opened
 Pebble.addEventListener('ready', startup);
@@ -708,9 +736,26 @@ function startup()
     if (localStorage.getItem("timelineEnabled") === null)
         localStorage.setItem("timelineEnabled", "true");
 
-    if (localStorage.getItem("todoistMiniTokenV7") === null)
+    const token = localStorage.getItem("todoistMiniTokenV7");
+    const migrated = localStorage.getItem("tokenMigrated");
+    
+    if (token === null)
     {
         sendWaitingMessageAndPerformAction(1);
+    }
+    else if (migrated !== "true")
+    {
+        // Attempt token migration for existing users upgrading from Sync API v9 to v1
+        // The migration endpoint will convert legacy tokens to OAuth format
+        migrateToken(token, function(success) {
+            localStorage.setItem("tokenMigrated", "true");
+            if (success) {
+                sendWaitingMessageAndPerformAction(2);
+            } else {
+                // Migration failed - token might already be new format, proceed anyway
+                sendWaitingMessageAndPerformAction(2);
+            }
+        });
     }
     else
     {

@@ -34,11 +34,11 @@ function createUUID() {
     return uuid;
 }
 
-var xhrRequest = function (url, type, callback, token = null) {
+var xhrRequest = function (url, type, callback, token = null, body = null) {
   const xhr = new XMLHttpRequest();
   xhr.onload = function () {
-    if (this.status === 200) {
-      callback(this.responseText);
+    if (this.status === 200 || this.status === 204) {
+      callback(this.responseText || '{}');
     } else {
       sendErrorString("Error:Status " + this.status);
     }
@@ -47,7 +47,10 @@ var xhrRequest = function (url, type, callback, token = null) {
   if (token) {
     xhr.setRequestHeader('Authorization', 'Bearer ' + token);
   }
-  xhr.send();
+  if (body) {
+    xhr.setRequestHeader('Content-Type', 'application/json');
+  }
+  xhr.send(body);
 };
 
 function getWatchVersion()
@@ -343,6 +346,11 @@ function getProjects(responseText)
             projectNames = projectNames + json[i].name.replace("|", "")  + " |";
             projectIDs = projectIDs  + json[i].id + "|";
             projectIndentation = projectIndentation + getIndentLevel(json[i], json) + "|";
+
+            // Set inbox_project in localStorage if the project has inbox_project set to true
+            if (json[i].inbox_project && localStorage.getItem("inboxProjectID") === "" ) {
+                localStorage.setItem("inboxProjectID", json[i].id);
+            }
         }
     
         var dictionary = 
@@ -631,18 +639,31 @@ function addNewItem(itemText, projectID)
     if (itemText.endsWith(".")) {
         itemText = itemText.slice(0, -1);
     }
-    const commandsjson = [{
-        "type": "item_add",
-        "temp_id": createUUID(),
-        "uuid": createUUID(),
-        "args": {
-            "content": itemText,
-            "project_id": projectID
-        }
-    }];
+    
     const token = localStorage.getItem("todoistMiniTokenV7");
-    const params = "commands=" + encodeURIComponent(JSON.stringify(commandsjson));
-    xhrRequest(apiUrl + "?" + params, 'POST', addItem, token);
+    
+    // Check if this is for Inbox - use Quick Add API
+    if (localStorage.getItem("inboxProjectID") !== "" && projectID === localStorage.getItem("inboxProjectID")) {
+        const quickAddData = {
+            "text": itemText + " #Inbox",
+            "auto_reminder": false,
+            "meta": false
+        };
+        xhrRequest('https://api.todoist.com/api/v1/tasks/quick', 'POST', addItem, token, JSON.stringify(quickAddData));
+    } else {
+        // Use sync API for other projects
+        const commandsjson = [{
+            "type": "item_add",
+            "temp_id": createUUID(),
+            "uuid": createUUID(),
+            "args": {
+                "content": itemText,
+                "project_id": projectID
+            }
+        }];
+        const params = "commands=" + encodeURIComponent(JSON.stringify(commandsjson));
+        xhrRequest(apiUrl + "?" + params, 'POST', addItem, token);
+    }
 }
 
 function markItemAsCompleted(itemID)

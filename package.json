@@ -1,6 +1,8 @@
 {
     "author": "bradpaugh@gmail.com",
-    "dependencies": {},
+    "dependencies": {
+        "@rebble/clay": "^1.0.10"
+    },
     "keywords": [],
     "name": "todoist-mini",
     "pebble": {
@@ -12,6 +14,7 @@
         "enableMultiJS": true,
         "messageKeys": {
             "ADD_NEW_ITEM": 16,
+            "API_TOKEN": 18,
             "CONFIG": 8,
             "ERROR": 7,
             "ERRORMSG": 10,

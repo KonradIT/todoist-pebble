@@ -1,5 +1,3 @@
-const clientID = '2a11ee6e18fe46ad89f9dcbd5507b76b';
-const secret = 'cc88177b38774df2acfedd668be53824';
 const apiUrl = 'https://api.todoist.com/api/v1/sync';
 
 // modernWatches lists the *platforms* that have a fair amount of RAM
@@ -20,7 +18,12 @@ const modernWatches = [
 // For Aplite (Pebble / Pebble Steel) its needed:
 const maxForLowMemDevices = 20;
 
-var code;
+// TODO: Persist settings on watch? This may make startup times faster.
+// https://developer.repebble.com/guides/user-interfaces/app-configuration/#persisting-settings
+var Clay = require('@rebble/clay');
+var clayConfig = require('./config');
+var clay = new Clay(clayConfig);
+
 var selectedProjectID;
 
 var markCompletedUUID;
@@ -45,7 +48,9 @@ function createUUID() {
     return uuid;
 }
 
-var xhrRequest = function (url, type, callback, token = null, body = null) {
+var xhrRequest = function (url, type, callback, body = null) {
+  const token = getAPIToken();
+
   const xhr = new XMLHttpRequest();
   xhr.onload = function () {
     if (this.status === 200 || this.status === 204) {
@@ -55,9 +60,7 @@ var xhrRequest = function (url, type, callback, token = null, body = null) {
     }
   };
   xhr.open(type, url);
-  if (token) {
-    xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-  }
+  xhr.setRequestHeader('Authorization', 'Bearer ' + token);
   if (body) {
     xhr.setRequestHeader('Content-Type', 'application/json');
   }
@@ -305,22 +308,6 @@ function getItems(responseText)
     }
 }
 
-function getToken(responseText) 
-{
-    // responseText contains a JSON object with token info
-    var json = JSON.parse(responseText);
-    if (responseText == "\"LOGIN_ERROR\"")
-    {
-        sendErrorMessage(1);
-        openConfig();
-        return;
-    }
-    // Conditions
-    var token = json.access_token;
-    localStorage.setItem("todoistMiniTokenV7", token);
-    getProjectsFromToken();
-}
-
 function getProjects(responseText)
 {
     try
@@ -538,19 +525,11 @@ function sendWaitingMessageAndPerformAction(code)
                               {
                                   if (code == 1)
                                   {
-                                       openConfig();   
+                                      Pebble.openURL(clay.generateUrl());
                                   }
                                   if (code == 2)
                                   {
-                                       getProjectsFromToken(); 
-                                  }
-                                  if (code == 3)
-                                  {
-                                       processTodoistDataWithGoogle();
-                                  }
-                                  if (code == 4)
-                                  {
-                                       processTodoistData();  
+                                      getProjectsWithToken();
                                   }
                               },
                               function(e) 
@@ -600,48 +579,30 @@ function sendErrorString(errorMsg)
                           });   
 }
 
-function processTodoistData() 
+function getAPIToken()
 {
-    var url = "https://todoist.com/oauth/access_token?client_id=" + encodeURIComponent(clientID) + "&client_secret=" + encodeURIComponent(secret) + "&code=" + encodeURIComponent(code);
-    //localStorage.removeItem("todoistEmail");
-    //localStorage.removeItem("todoistPassword");
-    //note that xhr request is ASYNCHRONOUS everything after it in this function will get executed
-    //before it is even finished the next path of execution HAS to be in the callback function
-    xhrRequest(url, 'POST', getToken);
-    
-    //getProjectsFromToken();
+    const settings = JSON.parse(localStorage.getItem('clay-settings'));
+    return settings.API_TOKEN;
 }
 
-function processTodoistDataWithGoogle()
+function getProjectsWithToken()
 {
-    var url = "https://todoist.com/API/loginWithGoogle?email=" +
-    encodeURIComponent(localStorage.getItem("googleEmail")) + "&oauth2_token=" + encodeURIComponent(localStorage.getItem("googleToken"));
-    //note that xhr request is ASYNCHRONOUS everything after it in this function will get executed
-    //before it is even finished the next path of execution HAS to be in the callback function
-    xhrRequest(url, 'GET', getToken);
-}
-
-function getProjectsFromToken()
-{
-    const token = localStorage.getItem("todoistMiniTokenV7");
     const params = "sync_token=*&resource_types=[\"projects\"]";
-    xhrRequest(apiUrl + "?" + params, 'POST', getProjects, token);
+    xhrRequest(apiUrl + "?" + params, 'POST', getProjects);
 }
 
 function getItemsForSelectedProject(projectID)
 {
     selectedProjectID = projectID;
-    const token = localStorage.getItem("todoistMiniTokenV7");
     const params = "sync_token=*&resource_types=[\"items\"]";
-    xhrRequest(apiUrl + "?" + params, 'POST', getItems, token);
+    xhrRequest(apiUrl + "?" + params, 'POST', getItems);
 }
 
 function getItemsForToday()
 {
     selectedProjectID = 0; // seems to indicate today's project??
-    const token = localStorage.getItem("todoistMiniTokenV7");
     const params = "sync_token=*&resource_types=[\"items\"]";
-    xhrRequest(apiUrl + "?" + params, 'POST', getItems, token);
+    xhrRequest(apiUrl + "?" + params, 'POST', getItems);
 }
 
 function addNewItem(itemText, projectID)
@@ -651,8 +612,6 @@ function addNewItem(itemText, projectID)
         itemText = itemText.slice(0, -1);
     }
     
-    const token = localStorage.getItem("todoistMiniTokenV7");
-    
     // Check if this is for Inbox - use Quick Add API
     if (localStorage.getItem("inboxProjectID") !== "" && projectID === localStorage.getItem("inboxProjectID")) {
         const quickAddData = {
@@ -660,7 +619,7 @@ function addNewItem(itemText, projectID)
             "auto_reminder": false,
             "meta": false
         };
-        xhrRequest('https://api.todoist.com/api/v1/tasks/quick', 'POST', addItem, token, JSON.stringify(quickAddData));
+        xhrRequest('https://api.todoist.com/api/v1/tasks/quick', 'POST', addItem, JSON.stringify(quickAddData));
     } else {
         // Use sync API for other projects
         const commandsjson = [{
@@ -673,7 +632,7 @@ function addNewItem(itemText, projectID)
             }
         }];
         const params = "commands=" + encodeURIComponent(JSON.stringify(commandsjson));
-        xhrRequest(apiUrl + "?" + params, 'POST', addItem, token);
+        xhrRequest(apiUrl + "?" + params, 'POST', addItem);
     }
 }
 
@@ -689,9 +648,8 @@ function markItemAsCompleted(itemID)
         }
     }];
     
-    const token = localStorage.getItem("todoistMiniTokenV7");
     const params = "commands=" + encodeURIComponent(JSON.stringify(commandsjson));
-    xhrRequest(apiUrl + "?" + params, 'POST', markItem, token);
+    xhrRequest(apiUrl + "?" + params, 'POST', markItem);
 }
 
 function markRecurringItemAsCompleted(itemID)
@@ -707,9 +665,8 @@ function markRecurringItemAsCompleted(itemID)
         }
     }];
     
-    const token = localStorage.getItem("todoistMiniTokenV7");
     const params = "commands=" + encodeURIComponent(JSON.stringify(commandsjson));
-    xhrRequest(apiUrl + "?" + params, 'POST', markRecurringItem, token);
+    xhrRequest(apiUrl + "?" + params, 'POST', markRecurringItem);
 }
 
 function markItemAsUncompleted(itemID)
@@ -725,39 +682,10 @@ function markItemAsUncompleted(itemID)
         }
     }];
     
-    const token = localStorage.getItem("todoistMiniTokenV7");
     const params = "commands=" + encodeURIComponent(JSON.stringify(commandsjson));
-    xhrRequest(apiUrl + "?" + params, 'POST', uncompleteItem, token);
+    xhrRequest(apiUrl + "?" + params, 'POST', uncompleteItem);
 }
 
-
-// Token migration function for existing users
-function migrateToken(oldToken, callback) {
-    const xhr = new XMLHttpRequest();
-    xhr.onload = function () {
-        if (this.status === 200) {
-            try {
-                const json = JSON.parse(this.responseText);
-                if (json.token) {
-                    localStorage.setItem("todoistMiniTokenV7", json.token);
-                    callback(true);
-                } else {
-                    callback(false);
-                }
-            } catch (e) {
-                callback(false);
-            }
-        } else {
-            callback(false);
-        }
-    };
-    xhr.onerror = function() {
-        callback(false);
-    };
-    xhr.open('POST', 'https://api.todoist.com/api/v1/access_tokens/migrate_personal_token');
-    xhr.setRequestHeader('Content-Type', 'application/json');
-    xhr.send(JSON.stringify({"token": oldToken}));
-}
 
 // Listen for when the watchface is opened
 Pebble.addEventListener('ready', startup);
@@ -768,31 +696,7 @@ function startup()
     if (localStorage.getItem("timelineEnabled") === null)
         localStorage.setItem("timelineEnabled", "true");
 
-    const token = localStorage.getItem("todoistMiniTokenV7");
-    const migrated = localStorage.getItem("tokenMigrated");
-    
-    if (token === null)
-    {
-        sendWaitingMessageAndPerformAction(1);
-    }
-    else if (migrated !== "true")
-    {
-        // Attempt token migration for existing users upgrading from Sync API v9 to v1
-        // The migration endpoint will convert legacy tokens to OAuth format
-        migrateToken(token, function(success) {
-            localStorage.setItem("tokenMigrated", "true");
-            if (success) {
-                sendWaitingMessageAndPerformAction(2);
-            } else {
-                // Migration failed - token might already be new format, proceed anyway
-                sendWaitingMessageAndPerformAction(2);
-            }
-        });
-    }
-    else
-    {
-        sendWaitingMessageAndPerformAction(2);
-    }
+    sendWaitingMessageAndPerformAction(2);
 }
 
 // Listen for when an AppMessage is received
@@ -824,99 +728,3 @@ Pebble.addEventListener('appmessage',
     }
   }                     
 );
-
-//sets the configuration options from the config page that the user has just saved.
-function setConfig(loginData)
-{
-    try
-    {
-        localStorage.setItem("ConfigData", JSON.stringify(loginData));
-        var configString = loginData.scrollSpeed + '|' + loginData.backgroundColor + '|' + loginData.foregroundColor + '|' + loginData.altBackgroundColor + '|' + loginData.altForegroundColor + '|' + loginData.highlightBackgroundColor + '|' + loginData.highlightForegroundColor + '|' + loginData.timelineEnabled + '|';
-        localStorage.setItem("timelineEnabled", loginData.timelineEnabled);
-        var dictionary = 
-        {
-            "CONFIG": configString
-        };
-    
-        // Send to Pebble
-        Pebble.sendAppMessage(dictionary,
-                              function(e) 
-                              {
-                                  
-                              },
-                              function(e) 
-                              {
-                                  sendErrorString(e.error.message);  
-                              }); 
-    }
-    catch (err)
-    {
-        sendErrorString(err.message);
-    }
-}
-
-function openConfig(e) {
-    const baseUrl = "https://perogy.github.io/PebbleProject/indexNew.html";
-    
-    if (localStorage.getItem("ConfigData") === null) {
-        Pebble.openURL(baseUrl);
-    } else {
-        const configData = JSON.parse(localStorage.getItem("ConfigData"));
-        const params = new URLSearchParams({
-            scrollSpeed: configData.scrollSpeed,
-            backgroundColor: configData.backgroundColor,
-            foregroundColor: configData.foregroundColor,
-            altBackgroundColor: configData.altBackgroundColor,
-            altForegroundColor: configData.altForegroundColor,
-            highlightBackgroundColor: configData.highlightBackgroundColor,
-            highlightForegroundColor: configData.highlightForegroundColor,
-            timelineEnabled: configData.timelineEnabled
-        });
-        
-        Pebble.openURL(`${baseUrl}#${params.toString()}`);
-    }
-}
-
-function closeConfig(e) {
-    try
-    {
-        //if they pressed back on the settings screen (no save or login), just run the startup function
-        if (typeof(e.response) == "undefined")
-        {
-            startup();
-            return;
-        }
-        var loginData = JSON.parse(decodeURIComponent(e.response));
-        
-        
-        if (loginData.type == "configData")
-        {
-            setConfig(loginData);
-            return;
-        }
-        
-        if (loginData.googleToken)
-        {
-            //check whether google or normal login and then run appropriate code
-            localStorage.setItem("googleToken", loginData.token);
-            localStorage.setItem("googleEmail", loginData.email);
-            sendWaitingMessageAndPerformAction(3);
-            
-        }
-        else
-        {
-            code = loginData.code;
-            sendWaitingMessageAndPerformAction(4);
-        }
-    }
-    catch (err)
-    {
-        sendErrorString(err.message);
-    }
-
-}
-// Listen for a configuration request
-Pebble.addEventListener('showConfiguration', openConfig);
-
-//Listen for configuration window closing
-Pebble.addEventListener('webviewclosed', closeConfig);

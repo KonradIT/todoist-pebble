@@ -1,10 +1,21 @@
 const clientID = '2a11ee6e18fe46ad89f9dcbd5507b76b';
 const secret = 'cc88177b38774df2acfedd668be53824';
 const apiUrl = 'https://api.todoist.com/api/v1/sync';
+
+// modernWatches lists the *platforms* that have a fair amount of RAM
+// to support large task lists.
+// https://developer.repebble.com/guides/tools-and-resources/hardware-information/
 const modernWatches = [
+    // These have 64k for code + heap:
     "basalt", // Time/Time Steel
     "chalk", // Round
-    "diorite"]; // Pebble 2
+    "diorite", // Pebble 2
+    "flint", // Pebble 2 Duo
+    // These have 128k for code + heap:
+    "emery", // Pebble Time 2
+    "gabbro", // Pebble Round 2
+];
+
 
 // For Aplite (Pebble / Pebble Steel) its needed:
 const maxForLowMemDevices = 20;

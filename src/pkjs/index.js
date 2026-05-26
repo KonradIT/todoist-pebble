@@ -77,15 +77,6 @@ function getWatchVersion()
     return platform;
 }
 
-//if integer is 0 return a string 00. Used for times
-function leadingZeroCheck(number)
-{
-    if (number < 10)
-        return "0" + number;
-    else
-        return number;
-}
-
 function removeOutlookGarbage(str)
 {
     if (startsWith(str,"[[outlook=id"))
@@ -126,6 +117,28 @@ function parseTodoistDate(dueObject) {
     // parses this: 2016-12-0T12:00:00.000000 to a Date object
     const timestamp = Date.parse(dueObject.date);
     return new Date(timestamp); 
+}
+
+// Parse a due date, which can be of several types.
+// This function returns several possibilities so callers can know what form the due date was in:
+//   null for a null input
+//   [0, Date] for full-day dates (e.g. "2016-12-01")
+//   [1, Date] for due dates with time (either floating, or with timezone)
+//
+// https://developer.todoist.com/api/v1/#tag/Due-dates
+function parseTodoistDue(due) {
+    if (due === null)
+        return null;
+    // TODO: add "Z" to these to force UTC? It will be absent in the first two cases.
+    const d = new Date(Date.parse(due.date));
+    if (!due.timezone) {
+        if (due.date.length == 10) {
+            return [0, d];
+        }
+        return [1, d];
+    }
+    // TODO: Do timezone conversion properly.
+    return [1, d];
 }
 
 function parseTodoistDateString(dueObject) {
@@ -272,19 +285,27 @@ function getItems(selectedProjectID, state)
             else
                 itemDates = itemDates + parseTodoistDateString(item.due) + "|";
                 itemIndentation = itemIndentation + getIndentLevel(item, items) + "|";
-            if (item.due === null)
+
+            var idd = "";
+            var dd = parseTodoistDue(item.due);
+            if (dd)
             {
-                itemDueDates = itemDueDates + "|";
+                // Don't include date for the "today" list, since they're all today (or overdue).
+                const includeDate = !isToday;
+                // Include a time if there is one.
+                const includeTime = dd[0] > 0;
+
+                const d = dd[1];
+                if (includeDate)
+                    idd += monthNames[d.getMonth()] + " " + d.getDate();
+                if (includeTime)
+                {
+                    if (idd != "")
+                        idd += " "
+                    idd += d.getHours() + ":" + d.getMinutes().toString().padStart(2, "0");
+                }
             }
-            else
-            {
-                var d = parseTodoistDate(item.due);
-                //if the time is 23:59 this specifies "no time"
-                if ((d.getHours() == 23) && (d.getMinutes() == 59))
-                    itemDueDates = itemDueDates + monthNames[d.getMonth()] + " " + d.getDate() + "|";
-                else
-                    itemDueDates = itemDueDates + monthNames[d.getMonth()] + " " + d.getDate() + " " + d.getHours() + ":" + leadingZeroCheck(d.getMinutes())  + "|";
-            }
+            itemDueDates = itemDueDates + idd + "|";
         }
 
 

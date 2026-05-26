@@ -153,12 +153,10 @@ function getIndentLevel(item, allItems) {
     return level;
 }
 
-function getItems(responseText)
+function getItems(selectedProjectID, state)
 {    
     try {
-        // responseText contains a JSON object with item info
-        let json = JSON.parse(responseText);
-        json = json.items;
+        let json = state.items;
     
         // My time steel crashes when there are a lot of tasks...
         if (!modernWatches.includes(getWatchVersion()) && json.length > maxForLowMemDevices) {
@@ -228,6 +226,9 @@ function getItems(responseText)
     
         for(var i=0;i<json.length;i++)
         {
+            // Ignore checked (completed) tasks. These will eventually stop getting synced.
+            if (json[i].checked)
+                continue;
             
             if (isToday)
             {
@@ -308,13 +309,11 @@ function getItems(responseText)
     }
 }
 
-function getProjects(responseText)
+function getProjects(state)
 {
     try
     {
-        // responseText contains a JSON object with project data
-        var json = JSON.parse(responseText);
-        json = json.projects;
+        json = state.projects;
     
         if (json[0])
         {
@@ -529,7 +528,7 @@ function sendWaitingMessageAndPerformAction(code)
                                   }
                                   if (code == 2)
                                   {
-                                      getProjectsWithToken();
+                                      todoistSync(getProjects);
                                   }
                               },
                               function(e) 
@@ -585,24 +584,64 @@ function getAPIToken()
     return settings.API_TOKEN;
 }
 
-function getProjectsWithToken()
+// todoistSync refreshes the sync state and runs a callback with the latest state.
+//
+// This attempts to almost always do an incremental sync, which is much more
+// efficient, and can support a higher refresh rate.
+// https://developer.todoist.com/api/v1/#tag/Sync
+function todoistSync(callback)
 {
-    const params = "sync_token=*&resource_types=[\"projects\"]";
-    xhrRequest(apiUrl + "?" + params, 'POST', getProjects);
-}
+    // Look for existing sync state of an appropriate revision.
+    let syncToken = localStorage.getItem("todoistSyncToken") || "*";
+    if (localStorage.getItem("todoistSyncRev") != "rev1")
+        syncToken = "*";  // last sync has a different subset; start afresh
+    // TODO: Periodically (e.g. every 30d?), do a full sync to clear old state, like deleted tasks.
+    let state = {};
+    if (syncToken != "*")
+        state = JSON.parse(localStorage.getItem("todoistSyncState") || "{}");
 
-function getItemsForSelectedProject(projectID)
-{
-    selectedProjectID = projectID;
-    const params = "sync_token=*&resource_types=[\"items\"]";
-    xhrRequest(apiUrl + "?" + params, 'POST', getItems);
-}
+    // Sync data.
+    //console.log("Starting Todoist sync with syncToken=" + syncToken);
+    // Unfortunately, URLSearchParams is not in Pebble's JS environment.
+    const params = "sync_token=" + encodeURIComponent(syncToken) + `&resource_types=["items","projects","user"]`;
+    xhrRequest(apiUrl + "?" + params, "POST", function(response) {
+        //console.log("Todoist sync returned " + response.length + " bytes");
+        const data = JSON.parse(response);
 
-function getItemsForToday()
-{
-    selectedProjectID = 0; // seems to indicate today's project??
-    const params = "sync_token=*&resource_types=[\"items\"]";
-    xhrRequest(apiUrl + "?" + params, 'POST', getItems);
+        // Merge incremental data.
+        if (data.full_sync)
+            state = {};
+        for (const key of ["items", "projects"]) {  // handle resource types that are lists
+            if (!state[key])
+                state[key] = [];
+            for (const val of (data[key] || [])) {
+                // Replace corresponding entry in state[key], matching on ID.
+                let found = false;
+                for (let i = 0; i < state[key].length; ++i) {
+                    if (state[key][i].id == val.id) {
+                        state[key][i] = val;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                    state[key].push(val);
+            }
+        }
+        for (const key of ["user"]) {  // handle resource types that are values
+            const val = data[key];
+            if (!!val)
+                state[key] = val;
+        }
+
+        // Save sync state.
+        localStorage.setItem("todoistSyncState", JSON.stringify(state));
+        localStorage.setItem("todoistSyncToken", data.sync_token);
+        localStorage.setItem("todoistSyncRev", "rev1");
+
+        // Call the final callback.
+        callback(state);
+    });
 }
 
 function addNewItem(itemText, projectID)
@@ -704,10 +743,10 @@ Pebble.addEventListener('appmessage',
   function(e) {
     if(e.payload.SELECTED_PROJECT)
     {
-        if (e.payload.SELECTED_PROJECT == "0")
-            getItemsForToday();
+        if (e.payload.SELECTED_PROJECT == "0")  // seems to indicate today's project?
+            todoistSync(getItems.bind(null, 0));
         else
-            getItemsForSelectedProject(e.payload.SELECTED_PROJECT);
+            todoistSync(getItems.bind(null, e.payload.SELECTED_PROJECT));
     }
     if(e.payload.SELECTED_ITEM)
     {

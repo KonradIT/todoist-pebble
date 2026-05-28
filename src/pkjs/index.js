@@ -24,8 +24,6 @@ var Clay = require('@rebble/clay');
 var clayConfig = require('./config');
 var clay = new Clay(clayConfig);
 
-var selectedProjectID;
-
 var markCompletedUUID;
 var markCompletedItemID;
 
@@ -154,66 +152,68 @@ function getIndentLevel(item, allItems) {
 }
 
 function getItems(selectedProjectID, state)
-{    
+{
     try {
-        let json = state.items;
-    
+        // Extract the current user's ID for filtering out other users' assigned tasks below.
+        const currentUserID = state.user.id;
+
+        let items = state.items;
+
         // My time steel crashes when there are a lot of tasks...
-        if (!modernWatches.includes(getWatchVersion()) && json.length > maxForLowMemDevices) {
-            json = json.slice(maxForLowMemDevices);
+        if (!modernWatches.includes(getWatchVersion()) && items.length > maxForLowMemDevices) {
+            items = items.slice(maxForLowMemDevices);
         }
 
         const isToday = selectedProjectID === 0 ? 1 : 0;
-    
+
         //sort the list based on the item order property, if today, sort by date
         if (isToday)
         {
-             json.sort((a, b) => {
+             items.sort((a, b) => {
                  const d1 = parseTodoistDate(a.due);
                  const d2 = parseTodoistDate(b.due);
                  return d1 - d2;
-            });   
+            });
         }
         else
         {
             // Sort items considering parent-child relationships
-            json.sort((a, b) => {
+            items.sort((a, b) => {
                 // Get parent items
-                const aParent = json.find(item => item.id === a.parent_id);
-                const bParent = json.find(item => item.id === b.parent_id);
-                
+                const aParent = items.find(item => item.id === a.parent_id);
+                const bParent = items.find(item => item.id === b.parent_id);
+
                 // If items have different parents, sort by parent's child_order
                 if (aParent !== bParent) {
                     const aParentOrder = aParent ? parseInt(aParent.child_order) : parseInt(a.child_order);
                     const bParentOrder = bParent ? parseInt(bParent.child_order) : parseInt(b.child_order);
                     return bParentOrder - aParentOrder;
                 }
-                
+
                 // If items have same parent (or both are top-level), sort by their child_order
                 return parseInt(b.child_order) - parseInt(a.child_order);
             });
         }
-            
-        if (json[0] && !json[0].hasOwnProperty("id"))
+
+        if (items[0] && !items[0].hasOwnProperty("id"))
         {
             sendErrorMessage(3);
             return;
         }
-    
+
         const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
                           "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        
-    
+
+
         // Conditions
         let itemNames = "";
         let itemIDs = "";
         let itemDates = "";
         let itemDueDates = "";
         let itemIndentation = "";
-        
-    
+
         const watchVersion = getWatchVersion();
-    
+
         //only put "Add New" if we are on modern watches
         if (modernWatches.includes(watchVersion) && !isToday)
         {
@@ -221,26 +221,33 @@ function getItems(selectedProjectID, state)
             itemIDs += "0|";
             itemDates += "|";
             itemDueDates += "|";
-            itemIndentation += "1|";   
+            itemIndentation += "1|";
         }
-    
-        for(var i=0;i<json.length;i++)
+
+        for (const item of items)
         {
             // Ignore checked (completed) tasks. These will eventually stop getting synced.
-            if (json[i].checked)
+            if (item.checked)
                 continue;
-            
+
             if (isToday)
             {
+                // Ignore items assigned to someone other than the current user,
+                // mimicking the official app. TODO: Make this configurable.
+                if (!!item.responsible_uid && item.responsible_uid != currentUserID)
+                {
+                    continue;
+                }
+
                 var today = new Date();
                 today.setHours(0);
                 today.setMinutes(0);
                 today.setSeconds(0);
                 //considered "Today" if due date is in the current day or less (overdue)
                 today = addDays(today, 1);
-                if (json[i].due === null)
+                if (item.due === null)
                     continue;
-                var d = parseTodoistDate(json[i].due);
+                var d = parseTodoistDate(item.due);
                 if (d >= today)
                 {
                     continue;
@@ -249,40 +256,40 @@ function getItems(selectedProjectID, state)
             else
             {
                 //only proccess items that are in the selected project ID
-                if (json[i].project_id != selectedProjectID)
+                if (item.project_id != selectedProjectID)
                 {
                     continue;
                 }
-            }            
-            
+            }
+
             //items added via outlook have an ID tag in their content and some really weird syntax. The below is to fix this and show it as a normal item
-            json[i].content = removeOutlookGarbage(json[i].content);
-            
-            itemNames = itemNames + json[i].content.replace("|", "") + " |";
-            itemIDs = itemIDs  + json[i].id + "|";
-            if (parseTodoistDateString(json[i].due) == "")
+            item.content = removeOutlookGarbage(item.content);
+
+            itemNames = itemNames + item.content.replace("|", "") + " |";
+            itemIDs = itemIDs  + item.id + "|";
+            if (parseTodoistDateString(item.due) == "")
                 itemDates = itemDates + "|";
             else
-                itemDates = itemDates + parseTodoistDateString(json[i].due) + "|";
-                itemIndentation = itemIndentation + getIndentLevel(json[i], json) + "|";
-            if (json[i].due === null)
+                itemDates = itemDates + parseTodoistDateString(item.due) + "|";
+                itemIndentation = itemIndentation + getIndentLevel(item, items) + "|";
+            if (item.due === null)
             {
-                itemDueDates = itemDueDates + "|"; 
+                itemDueDates = itemDueDates + "|";
             }
             else
             {
-                var d = parseTodoistDate(json[i].due);
+                var d = parseTodoistDate(item.due);
                 //if the time is 23:59 this specifies "no time"
                 if ((d.getHours() == 23) && (d.getMinutes() == 59))
                     itemDueDates = itemDueDates + monthNames[d.getMonth()] + " " + d.getDate() + "|";
                 else
-                    itemDueDates = itemDueDates + monthNames[d.getMonth()] + " " + d.getDate() + " " + d.getHours() + ":" + leadingZeroCheck(d.getMinutes())  + "|";  
+                    itemDueDates = itemDueDates + monthNames[d.getMonth()] + " " + d.getDate() + " " + d.getHours() + ":" + leadingZeroCheck(d.getMinutes())  + "|";
             }
         }
-    
 
-    
-        var dictionary = 
+
+
+        var dictionary =
         {
             "ITEM_NAMES": itemNames,
             "ITEM_IDS": itemIDs,
@@ -290,18 +297,18 @@ function getItems(selectedProjectID, state)
             "ITEM_DUE_DATES": itemDueDates,
             "ITEM_INDENTATION": itemIndentation
         };
-    
-    
+
+
         // Send to Pebble
         Pebble.sendAppMessage(dictionary,
-                              function(e) 
+                              function(e)
                               {
-                                  
+
                               },
-                              function(e) 
+                              function(e)
                               {
                                   sendErrorString(e.error.message);
-                              });  
+                              });
     }
     catch (err)
     {

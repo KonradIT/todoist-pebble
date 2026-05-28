@@ -6,9 +6,9 @@ Todoist Mini is an unofficial pebble watch app for the popular productivity soft
 
 ## Features
 
-* Log in to your account via google or standard Todoist login.
-* Scrolling text for items that overflow the width of the screen, the scroll speed is customizable via the config screen.
-* Completely customizable colors! Create your own style of interface using any of Pebble's 64 supported colors.
+* Log in to your account using a Todoist API token.
+* ~~Scrolling text for items that overflow the width of the screen, the scroll speed is customizable via the config screen.~~ (temporarily removed)
+* ~~Completely customizable colors! Create your own style of interface using any of Pebble's 64 supported colors.~~ (temporarily removed)
 * View and complete items from any of your Todoist projects.
 * Supports indentation, due dates, and completion of recurring tasks.
 * Pins all items with due dates from your Todoist account to the timeline.
@@ -33,6 +33,3 @@ adb push build/todoist-pebble.pbw /sdcard/Download/
 ```
 
 I use the excellent "Sideload Helper" app to install the app on my watch. Get it: https://play.google.com/store/apps/details?id=io.rebble.charon&hl=en
-
-## Contact
-* email:bradpaugh@gmail.com

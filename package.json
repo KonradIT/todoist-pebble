@@ -1,5 +1,5 @@
 {
-    "author": "bradpaugh@gmail.com",
+    "author": "Konrad Iturbe <hi@konraditurbe.dev>",
     "dependencies": {
         "@rebble/clay": "^1.0.10"
     },

@@ -625,8 +625,18 @@ function todoistSync(callback)
         syncToken = "*";  // last sync has a different subset; start afresh
     // TODO: Periodically (e.g. every 30d?), do a full sync to clear old state, like deleted tasks.
     let state = {};
-    if (syncToken != "*")
+    if (syncToken != "*") {
         state = JSON.parse(localStorage.getItem("todoistSyncState") || "{}");
+
+        const lastSync = parseInt(localStorage.getItem("todoistLastSync")) || 0;
+        const ageSeconds = (Date.now() - lastSync) / 1000;
+
+        if (ageSeconds < 15) {  // TODO: make configurable
+            // Sync was recent enough; use the state we already have.
+            callback(state);
+            return;
+        }
+    }
 
     // Sync data.
     //console.log("Starting Todoist sync with syncToken=" + syncToken);
@@ -666,6 +676,7 @@ function todoistSync(callback)
         localStorage.setItem("todoistSyncState", JSON.stringify(state));
         localStorage.setItem("todoistSyncToken", data.sync_token);
         localStorage.setItem("todoistSyncRev", "rev1");
+        localStorage.setItem("todoistLastSync", Date.now().toString());
 
         // Call the final callback.
         callback(state);

@@ -11,7 +11,6 @@ Todoist Mini is an unofficial pebble watch app for the popular productivity soft
 * ~~Completely customizable colors! Create your own style of interface using any of Pebble's 64 supported colors.~~ (temporarily removed)
 * View and complete items from any of your Todoist projects.
 * Supports indentation, due dates, and completion of recurring tasks.
-* Pins all items with due dates from your Todoist account to the timeline.
 * Add new items to your projects using the microphone on devices that support it.
 
 ## Development

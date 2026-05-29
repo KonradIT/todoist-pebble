@@ -9,7 +9,6 @@ typedef struct mainWindowData
 {
     ProjectStruct* projects;
     ItemStruct* items;
-    ItemStruct* timelineItems;
     Config* config;
     //the index of the currently selected project (used for header)
     int selectedProjectIndex;

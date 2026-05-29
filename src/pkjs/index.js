@@ -533,19 +533,9 @@ function sendWaitingMessageAndPerformAction(code)
 {
     try
     {
-        //when we send app message it just needs to be a 1 or 2 (config or loading) 3 = timeline loading
-        var sendCode;
-        if ((code == 3) || (code == 4))
-            sendCode = 2;
-        else if (code == 5)
-            sendCode = 3;
-        else
-            sendCode = code;
-        
-     
         var dictionary = 
             {
-                "WAITING": sendCode
+                "WAITING": code
             };
             Pebble.sendAppMessage(dictionary,
                               function(e) 
@@ -770,10 +760,6 @@ Pebble.addEventListener('ready', startup);
 
 function startup()
 {
-    //enables timeline by default if it has never been set.
-    if (localStorage.getItem("timelineEnabled") === null)
-        localStorage.setItem("timelineEnabled", "true");
-
     sendWaitingMessageAndPerformAction(2);
 }
 

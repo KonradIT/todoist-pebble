@@ -85,22 +85,6 @@ void inbox_received_callback(DictionaryIterator *iterator, void *context)
                 itemIndentationStr = (char*)calloc(t->length, sizeof(char));
                 strcpy(itemIndentationStr, t->value->cstring);
             break;
-            case TIMELINE_COMPLETE:
-                //pop the timeline loading windows off the stack because loading is complete
-                while (window_stack_get_top_window() != window)
-                {
-                    window_stack_pop(1);
-                }
-                if (wd->config->timelineEnabled)
-                {
-                    //display new version message if needed
-                    if (!loadMessageShown())
-                    {
-                        displayMessage(userMessage, 101);
-                        saveMessageShown();
-                    }
-                }
-            break;
             case SELECTED_ITEM:
                 
                 if (strcmp(t->value->cstring,"1") == 0)
@@ -140,11 +124,7 @@ void inbox_received_callback(DictionaryIterator *iterator, void *context)
                 }
                 if (t->value->int32 == 2)
                 {
-                    displayMessage("Loading Projects...", 102);
-                }
-                if (t->value->int32 == 3)
-                {
-                    displayMessage("Writing Items to Timeline...", 102);
+                    displayMessage("Loading data...", 102);
                 }
             break;
             case ERROR:
@@ -222,15 +202,11 @@ void inbox_received_callback(DictionaryIterator *iterator, void *context)
             window_stack_pop(1);
         }
         
-        //if timeline is not enabled, display here otherwise display after timeline data has been sent
-        if (!wd->config->timelineEnabled)
+        //display new version message if needed
+        if (!loadMessageShown())
         {
-            //display new version message if needed
-            if (!loadMessageShown())
-            {
-                displayMessage(userMessage, 101);
-                saveMessageShown();
-            }
+            displayMessage(userMessage, 101);
+            saveMessageShown();
         }
     }
     if (itemNamesStr)

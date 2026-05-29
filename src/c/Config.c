@@ -6,7 +6,6 @@ void initDefaults(Config* config)
 {
     
     config->scrollSpeed = 150;
-    config->timelineEnabled = 1;
     #ifdef PBL_COLOR
         config->backgroundColor = GColorLightGray;
         config->foregroundColor = GColorBlack;
@@ -48,11 +47,6 @@ void setConfig(char* configString, Config* config)
         config->highlightBackgroundColor = GColorBlack;
         config->highlightForegroundColor = GColorWhite;
     #endif
-    
-    if (strcmp(configArray[7], "false") == 0)
-        config->timelineEnabled = 0;
-    else
-        config->timelineEnabled = 1;
 }
 
 void savePersistentConfig(Config* config)

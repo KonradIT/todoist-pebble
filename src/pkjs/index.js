@@ -24,9 +24,6 @@ var Clay = require('@rebble/clay');
 var clayConfig = require('./config');
 var clay = new Clay(clayConfig);
 
-var markCompletedUUID;
-var markCompletedItemID;
-
 function createUUID() {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
         return crypto.randomUUID();
@@ -706,8 +703,6 @@ function addNewItem(itemText, projectID)
 
 function markItemAsCompleted(itemID)
 {
-    markCompletedUUID = createUUID();
-    markCompletedItemID = itemID;
     const commandsjson = [{
         "type": "item_complete",
         "uuid": createUUID(),
@@ -722,13 +717,10 @@ function markItemAsCompleted(itemID)
 
 function markRecurringItemAsCompleted(itemID)
 {
-    markCompletedUUID = createUUID();
-    markCompletedItemID = itemID;
-    var commandsjson = [{
+    const commandsjson = [{
         "type": "item_update_date_complete", 
         "uuid": createUUID(), 
-        "args": 
-        {
+        "args": {
             "id": itemID
         }
     }];
@@ -739,14 +731,11 @@ function markRecurringItemAsCompleted(itemID)
 
 function markItemAsUncompleted(itemID)
 {
-    markCompletedUUID = createUUID();
-    markCompletedItemID = itemID;
-    var commandsjson = [{
+    const commandsjson = [{
         "type": "item_uncomplete", 
         "uuid": createUUID(), 
-        "args": 
-        {
-            "ids": [itemID]
+        "args": {
+            "id": itemID
         }
     }];
     

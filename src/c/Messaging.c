@@ -40,7 +40,6 @@ void inbox_received_callback(DictionaryIterator *iterator, void *context)
     char* projectIndentationStr = 0;
     char* itemNamesStr = 0;
     char* itemIDsStr = 0;
-    char* itemDatesStr = 0;
     char* itemDueDatesStr = 0;
     char* itemIndentationStr = 0;
     char* configStr = 0;
@@ -72,10 +71,6 @@ void inbox_received_callback(DictionaryIterator *iterator, void *context)
             case ITEM_IDS:
                 itemIDsStr = (char*)calloc(t->length, sizeof(char));
                 strcpy(itemIDsStr, t->value->cstring);
-            break;
-            case ITEM_DATES:
-                itemDatesStr = (char*)calloc(t->length, sizeof(char));
-                strcpy(itemDatesStr, t->value->cstring);
             break;
             case ITEM_DUE_DATES:
                 itemDueDatesStr = (char*)calloc(t->length, sizeof(char));
@@ -212,7 +207,7 @@ void inbox_received_callback(DictionaryIterator *iterator, void *context)
     if (itemNamesStr)
     {
         ItemStruct* itemList = createEmptyItemList();
-        unSerializeItemsString(itemList, itemNamesStr, itemIDsStr, itemDatesStr, itemDueDatesStr, itemIndentationStr);
+        unSerializeItemsString(itemList, itemNamesStr, itemIDsStr, itemDueDatesStr, itemIndentationStr);
         wd->items = itemList;
         
         
@@ -222,7 +217,6 @@ void inbox_received_callback(DictionaryIterator *iterator, void *context)
             displayMessage("There are no items in this project.", NON_FATAL);
             free(itemNamesStr);
             free(itemIDsStr);
-            free(itemDatesStr);
             free(itemDueDatesStr);
             free(itemIndentationStr);
             return;
@@ -237,7 +231,6 @@ void inbox_received_callback(DictionaryIterator *iterator, void *context)
         
         free(itemNamesStr);
         free(itemIDsStr);
-        free(itemDatesStr);
         free(itemDueDatesStr);
         free(itemIndentationStr);
         

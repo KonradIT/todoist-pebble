@@ -63,9 +63,7 @@ void sendItemIDToPhone(int index)
       return;
     }
   
-    if (wd->items->recurringTask[index])
-        dict_write_cstring(iter, SELECTED_ITEM_RECURRING, wd->items->itemIDs[index]);
-    else if (wd->items->checked[index])
+    if (wd->items->checked[index])
         dict_write_cstring(iter, SELECTED_ITEM_UNCOMPLETE, wd->items->itemIDs[index]);
     else
         dict_write_cstring(iter, SELECTED_ITEM, wd->items->itemIDs[index]);
@@ -349,7 +347,7 @@ void draw_row_callback_round(GContext *ctx, Layer *cell_layer, MenuIndex *cell_i
                     graphics_draw_text(ctx, wd->items->items[i], fonts_get_system_font(FONT_KEY_GOTHIC_18), textBounds, GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
                     
                     //if it has a date draw the date
-                    if (strcmp(wd->items->itemDates[cell_index->row], "") != 0)
+                    if (strcmp(wd->items->itemDueDates[cell_index->row], "") != 0)
                     {
                         textBounds.origin.y = textBounds.origin.y+20;
                         //draw a seperator line if there is a date
@@ -548,7 +546,7 @@ void draw_row_callback_modern(GContext *ctx, Layer *cell_layer, MenuIndex *cell_
                     graphics_draw_text(ctx, wd->items->items[i], fonts_get_system_font(FONT_KEY_GOTHIC_18), textBounds, GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
                     
                     //if it has a date draw the date
-                    if (strcmp(wd->items->itemDates[cell_index->row], "") != 0)
+                    if (strcmp(wd->items->itemDueDates[cell_index->row], "") != 0)
                     {
                         textBounds.origin.y = textBounds.origin.y+20;
                         //draw a seperator line if there is a date
@@ -731,7 +729,7 @@ void draw_row_callback(GContext *ctx, Layer *cell_layer, MenuIndex *cell_index, 
                     graphics_draw_text(ctx, wd->items->items[i], fonts_get_system_font(FONT_KEY_GOTHIC_18), textBounds, GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
                     
                     //if it has a date draw the date
-                    if (strcmp(wd->items->itemDates[cell_index->row], "") != 0)
+                    if (strcmp(wd->items->itemDueDates[cell_index->row], "") != 0)
                     {
                         textBounds.origin.y = textBounds.origin.y+20;
                         //draw a seperator line if there is a date

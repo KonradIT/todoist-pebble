@@ -161,81 +161,93 @@ function getIndentLevel(item, allItems) {
     return level;
 }
 
+// reorderItems rearranges `items` in place for the given project.
+function reorderItems(items, selectedProjectID) {
+    let sortKey = "due_date", order = "asc";  // default
+
+    // TODO: Permit customisation/control.
+    if (selectedProjectID == 0) { // today
+        sortKey = "priority";
+    }
+
+    //console.log("reorderItems: sortKey="+sortKey+", order="+order+" (proj "+selectedProjectID+", items.length="+items.length);
+    var sorter = null;
+    switch (sortKey) {
+        default:
+            // TODO
+            console.log("Unhandled sort key \"" + sortKey + "\".");
+            break;
+        case "due_date":
+            sorter = (a, b) => {
+                // Items with due date should come first.
+                if (!a.due || !b.due) {
+                    if (!a.due && !b.due)
+                        return 0;
+                    return !a.due ? 1 : -1;
+                }
+                const d1 = parseTodoistDate(a.due);
+                const d2 = parseTodoistDate(b.due);
+                return d1 - d2;
+            };
+            break;
+        case "manual":
+            sorter = (a, b) => {
+                return parseInt(a.child_order) - parseInt(b.child_order);
+            };
+            break;
+        case "priority":
+            // priority=4 is the highest (opposite of the official client),
+            // so sort by priority means descending numeric order.
+            items.sort((a, b) => {
+                return b.priority - a.priority;
+            });
+    }
+    if (!sorter)
+        return;
+
+    // Sort the items. Use `sorter` for top level items only.
+    fullSorter = (a, b) => {
+        const d = sorter(a, b);
+        if (d != 0)
+            return d;
+        // Fallback to item content for a stable sort.
+        return a.content < b.content ? -1 : 1;
+    };
+    items.sort((a, b) => {
+        // Get parent items; will be undefined if at top-level.
+        const aParent = items.find(item => item.id === a.parent_id);
+        const bParent = items.find(item => item.id === b.parent_id);
+        const aTop = aParent || a;
+        const bTop = bParent || b;
+
+        // If the top of a and b are different, compare the tops.
+        if (aTop !== bTop)
+            return fullSorter(aTop, bTop);
+
+        // Tops are the same. The root should come first.
+        if (!aParent || !bParent)
+            return !aParent ? -1 : 1;
+
+        // Same root, but neither is root.
+        return parseInt(a.child_order) - parseInt(b.child_order);
+    });
+    if (order == "desc") {
+        items.reverse();
+    }
+}
+
 function getItems(selectedProjectID, state)
 {
     try {
         // Extract the current user's ID for filtering out other users' assigned tasks below.
         const currentUserID = state.user.id;
 
-        let items = state.items;
-
-        // My time steel crashes when there are a lot of tasks...
-        if (!modernWatches.includes(getWatchVersion()) && items.length > maxForLowMemDevices) {
-            items = items.slice(maxForLowMemDevices);
-        }
-
         const isToday = selectedProjectID === 0 ? 1 : 0;
-
-        //sort the list based on the item order property, if today, sort by date
-        if (isToday)
-        {
-             items.sort((a, b) => {
-                 const d1 = parseTodoistDate(a.due);
-                 const d2 = parseTodoistDate(b.due);
-                 return d1 - d2;
-            });
-        }
-        else
-        {
-            // Sort items considering parent-child relationships
-            items.sort((a, b) => {
-                // Get parent items
-                const aParent = items.find(item => item.id === a.parent_id);
-                const bParent = items.find(item => item.id === b.parent_id);
-
-                // If items have different parents, sort by parent's child_order
-                if (aParent !== bParent) {
-                    const aParentOrder = aParent ? parseInt(aParent.child_order) : parseInt(a.child_order);
-                    const bParentOrder = bParent ? parseInt(bParent.child_order) : parseInt(b.child_order);
-                    return bParentOrder - aParentOrder;
-                }
-
-                // If items have same parent (or both are top-level), sort by their child_order
-                return parseInt(b.child_order) - parseInt(a.child_order);
-            });
-        }
-
-        if (items[0] && !items[0].hasOwnProperty("id"))
-        {
-            sendErrorMessage(3);
-            return;
-        }
-
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                          "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-
-        // Conditions
-        let itemNames = "";
-        let itemIDs = "";
-        let itemDates = "";
-        let itemDueDates = "";
-        let itemIndentation = "";
-
         const watchVersion = getWatchVersion();
 
-        //only put "Add New" if we are on modern watches
-        if (modernWatches.includes(watchVersion) && !isToday)
-        {
-            itemNames += "+ Add New |";
-            itemIDs += "0|";
-            itemDates += "|";
-            itemDueDates += "|";
-            itemIndentation += "1|";
-        }
-
-        for (const item of items)
-        {
+        // Get subset of items for selected project.
+        let items = [];
+        for (const item of state.items) {
             // Ignore checked (completed) tasks. These will eventually stop getting synced.
             if (item.checked)
                 continue;
@@ -259,18 +271,51 @@ function getItems(selectedProjectID, state)
                     continue;
                 var d = parseTodoistDate(item.due);
                 if (d >= today)
-                {
                     continue;
-                }
+            } else if (item.project_id != selectedProjectID) {
+                continue;
             }
-            else
-            {
-                //only proccess items that are in the selected project ID
-                if (item.project_id != selectedProjectID)
-                {
-                    continue;
-                }
-            }
+
+            items.push(item);
+        }
+
+        // My time steel crashes when there are a lot of tasks...
+        if (!modernWatches.includes(watchVersion) && items.length > maxForLowMemDevices) {
+            items = items.slice(maxForLowMemDevices);
+        }
+
+        reorderItems(items, selectedProjectID);
+
+        if (items[0] && !items[0].hasOwnProperty("id"))
+        {
+            sendErrorMessage(3);
+            return;
+        }
+
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                          "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+
+        // Conditions
+        let itemNames = "";
+        let itemIDs = "";
+        let itemDates = "";
+        let itemDueDates = "";
+        let itemIndentation = "";
+
+        //only put "Add New" if we are on modern watches
+        if (modernWatches.includes(watchVersion) && !isToday)
+        {
+            itemNames += "+ Add New |";
+            itemIDs += "0|";
+            itemDates += "|";
+            itemDueDates += "|";
+            itemIndentation += "1|";
+        }
+
+        // Render all selected items.
+        for (const item of items)
+        {
 
             //items added via outlook have an ID tag in their content and some really weird syntax. The below is to fix this and show it as a normal item
             item.content = removeOutlookGarbage(item.content);
@@ -384,6 +429,7 @@ function getProjects(state)
     
         // Send to Pebble
         Pebble.sendAppMessage(dictionary,
+                              function(e) {},
                               function(e) 
                               {
                                   sendErrorString(e.error.message);

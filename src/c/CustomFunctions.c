@@ -11,18 +11,6 @@ void* iso_realloc(void* ptr, size_t size) {
   }
 }
 
-char* stringToLower(char* str)
-{
-    char* newStr = (char*)malloc((int)strlen(str) + 1);
-    int i;
-    for(i=0; i < (int)strlen(str); i++)
-    {
-        newStr[i] = tolower((int)str[i]);
-    }
-    newStr[i] = '\0';
-    return newStr;
-}
-
 char* getSubString(char* str, int startIndex, int endIndex)
 {
     char* newStr = (char*)malloc(endIndex - startIndex + 1);

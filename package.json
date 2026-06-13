@@ -18,7 +18,6 @@
             "CONFIG": 8,
             "ERROR": 7,
             "ERRORMSG": 10,
-            "ITEM_DATES": 11,
             "ITEM_DUE_DATES": 13,
             "ITEM_IDS": 4,
             "ITEM_INDENTATION": 15,
@@ -27,7 +26,6 @@
             "PROJECT_INDENTATION": 14,
             "PROJECT_NAMES": 0,
             "SELECTED_ITEM": 5,
-            "SELECTED_ITEM_RECURRING": 12,
             "SELECTED_ITEM_UNCOMPLETE": 17,
             "SELECTED_PROJECT": 2,
             "WAITING": 6

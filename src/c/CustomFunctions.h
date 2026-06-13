@@ -3,7 +3,6 @@
 
 #include <wchar.h>
 
-char* stringToLower(char* str);
 char* getSubString(char* str, int startIndex, int endIndex);
 
 void outputArrayContents(char** array, int arrayLength);

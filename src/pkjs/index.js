@@ -218,7 +218,6 @@ function getItems(selectedProjectID, state)
         // Conditions
         let itemNames = "";
         let itemIDs = "";
-        let itemDates = "";
         let itemDueDates = "";
         let itemIndentation = "";
 
@@ -229,7 +228,6 @@ function getItems(selectedProjectID, state)
         {
             itemNames += "+ Add New |";
             itemIDs += "0|";
-            itemDates += "|";
             itemDueDates += "|";
             itemIndentation += "1|";
         }
@@ -277,11 +275,7 @@ function getItems(selectedProjectID, state)
 
             itemNames = itemNames + item.content.replace("|", "") + " |";
             itemIDs = itemIDs  + item.id + "|";
-            if (parseTodoistDateString(item.due) == "")
-                itemDates = itemDates + "|";
-            else
-                itemDates = itemDates + parseTodoistDateString(item.due) + "|";
-                itemIndentation = itemIndentation + getIndentLevel(item, items) + "|";
+            itemIndentation = itemIndentation + getIndentLevel(item, items) + "|";
 
             var idd = "";
             var dd = parseTodoistDue(item.due);
@@ -311,7 +305,6 @@ function getItems(selectedProjectID, state)
         {
             "ITEM_NAMES": itemNames,
             "ITEM_IDS": itemIDs,
-            "ITEM_DATES": itemDates,
             "ITEM_DUE_DATES": itemDueDates,
             "ITEM_INDENTATION": itemIndentation
         };
@@ -703,8 +696,10 @@ function addNewItem(itemText, projectID)
 
 function markItemAsCompleted(itemID)
 {
+    // This works for both regular and recurring tasks.
+    // https://developer.todoist.com/api/v1/#tag/Sync/Tasks/Close-task
     const commandsjson = [{
-        "type": "item_complete",
+        "type": "item_close",
         "uuid": createUUID(),
         "args": {
             "id": itemID
@@ -713,20 +708,6 @@ function markItemAsCompleted(itemID)
     
     const params = "commands=" + encodeURIComponent(JSON.stringify(commandsjson));
     xhrRequest(apiUrl + "?" + params, 'POST', markItem);
-}
-
-function markRecurringItemAsCompleted(itemID)
-{
-    const commandsjson = [{
-        "type": "item_update_date_complete", 
-        "uuid": createUUID(), 
-        "args": {
-            "id": itemID
-        }
-    }];
-    
-    const params = "commands=" + encodeURIComponent(JSON.stringify(commandsjson));
-    xhrRequest(apiUrl + "?" + params, 'POST', markRecurringItem);
 }
 
 function markItemAsUncompleted(itemID)
@@ -765,10 +746,6 @@ Pebble.addEventListener('appmessage',
     if(e.payload.SELECTED_ITEM)
     {
         markItemAsCompleted(e.payload.SELECTED_ITEM);
-    }
-    if(e.payload.SELECTED_ITEM_RECURRING)
-    {
-        markRecurringItemAsCompleted(e.payload.SELECTED_ITEM_RECURRING);
     }
     if(e.payload.SELECTED_ITEM_UNCOMPLETE)
     {
